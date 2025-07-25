@@ -46,6 +46,8 @@
         <module>aws-sns-sink</module>
         <module>aws-sqs-sink</module>
         <module>log-sink</module>
+        <module>jsonata-transformer</module>
+        <module>split-transformer</module>
     </modules>
 
     <dependencyManagement>

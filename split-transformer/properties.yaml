@@ -1,0 +1,12 @@
+spec:
+  type: object
+  properties:
+    split:
+      type: object
+      properties:
+        expression:
+          title: Expression
+          description: The split expression as JsonPath expression.
+          type: string
+          example: "$.events"
+          default: "$"

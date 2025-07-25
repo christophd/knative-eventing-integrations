@@ -1,0 +1,63 @@
+# ---------------------------------------------------------------------------
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ---------------------------------------------------------------------------
+
+apiVersion: camel.apache.org/v1
+kind: Kamelet
+metadata:
+  name: split-sink
+  annotations:
+    camel.apache.org/kamelet.support.level: "Preview"
+    camel.apache.org/catalog.version: "4.14.0"
+    camel.apache.org/kamelet.icon: "data:image/svg+xml;base64,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"
+    camel.apache.org/provider: "Apache Software Foundation"
+    camel.apache.org/kamelet.group: "Transform"
+    camel.apache.org/kamelet.namespace: "Dataset"
+  labels:
+    camel.apache.org/kamelet.type: "sink"
+spec:
+  definition:
+    title: "Split Transform Sink"
+    description: "Splits Json data with a JsonPath expression"
+    type: object
+    properties:
+      expression:
+        title: Expression
+        description: The simple expression evaluated as a split criteria.
+        type: string
+        default: "$"
+  types:
+    out:
+      mediaType: application/json
+  dependencies:
+    - "camel:jackson"
+    - "camel:jsonpath"
+    - "camel:kamelet"
+  template:
+    from:
+      uri: "kamelet:source"
+      steps:
+        - unmarshal:
+            json: { }
+        - split:
+            jsonpath: "{{expression}}"
+            steps:
+              - marshal:
+                  json: { }
+              - transform:
+                  toType: http-application-cloudevents
+              - to:
+                  uri: "knative:event?kind=Broker&name=broker-sink"

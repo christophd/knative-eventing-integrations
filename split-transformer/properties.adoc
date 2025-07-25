@@ -1,0 +1,9 @@
+|===
+|Property |Required |EnvVar |Description
+
+|expression
+|no
+|CAMEL_KAMELET_SPLIT_ACTION_EXPRESSION=<the_expression>
+|The split expression as JsonPath expression.
+
+|===
