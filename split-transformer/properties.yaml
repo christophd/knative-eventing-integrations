@@ -1,0 +1,12 @@
+spec:
+  type: object
+  properties:
+    split:
+      type: object
+      properties:
+        expression:
+          title: Expression
+          description: The split expression.
+          type: string
+          example: "body"
+          default: "body"

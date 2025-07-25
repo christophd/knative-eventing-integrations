@@ -1,0 +1,16 @@
+apiVersion: eventing.knative.dev/v1
+kind: Trigger
+metadata:
+  annotations:
+    eventing.knative.dev/creator: kn-connectors
+  labels:
+    eventing.knative.dev/connector: jsonata-transformer
+    eventing.knative.dev/broker: default
+  name: jsonata-transformer
+spec:
+  broker: default
+  subscriber:
+    ref:
+      apiVersion: v1
+      kind: Service
+      name: jsonata-transformer

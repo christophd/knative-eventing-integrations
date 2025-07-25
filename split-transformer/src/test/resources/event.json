@@ -1,0 +1,11 @@
+{
+  "specversion": "1.0",
+  "type": "org.apache.camel.event",
+  "source": "org.apache.camel",
+  "id": "@ignore@",
+  "time": "@ignore@",
+  "datacontenttype": "application/json",
+  "data": {
+    "event": "@matches(a|b|c|d)@"
+  }
+}
