@@ -1,0 +1,15 @@
+- route:
+    from:
+      uri: "knative:event?kind=Broker&name=default"
+      steps:
+        - unmarshal:
+            json: {}
+        - split:
+            jsonpath: "{{split.transformer.expression}}"
+            steps:
+              - marshal:
+                  json: {}
+              - transform:
+                  toType: cloudevents-json
+              - to:
+                  uri: "knative:event?kind=Broker&name=broker"

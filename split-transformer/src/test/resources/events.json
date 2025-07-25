@@ -1,0 +1,25 @@
+{
+  "specversion": "1.0",
+  "type": "dev.knative.custom.events",
+  "source": "custom-source",
+  "subject": "events",
+  "id": "${ce-id}",
+  "time": "2025-02-03T20:06:23.403976118Z",
+  "datacontenttype": "application/json",
+  "data": {
+    "events": [
+      {
+        "event": "a"
+      },
+      {
+        "event": "b"
+      },
+      {
+        "event": "c"
+      },
+      {
+        "event": "d"
+      }
+    ]
+  }
+}
