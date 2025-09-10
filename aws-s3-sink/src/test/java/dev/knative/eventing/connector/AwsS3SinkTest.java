@@ -18,6 +18,7 @@ package dev.knative.eventing.connector;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -28,22 +29,31 @@ import org.citrusframework.context.TestContext;
 import org.citrusframework.exceptions.CitrusRuntimeException;
 import org.citrusframework.http.client.HttpClient;
 import org.citrusframework.http.endpoint.builder.HttpEndpoints;
+import org.citrusframework.kafka.endpoint.KafkaEndpoint;
+import org.citrusframework.kafka.endpoint.builder.KafkaEndpoints;
 import org.citrusframework.quarkus.CitrusSupport;
 import org.citrusframework.spi.BindToRegistry;
 import org.citrusframework.testcontainers.aws2.LocalStackContainer;
 import org.citrusframework.testcontainers.aws2.quarkus.LocalStackContainerSupport;
 import org.citrusframework.testcontainers.quarkus.ContainerLifecycleListener;
+import org.citrusframework.testcontainers.redpanda.quarkus.RedpandaContainerSupport;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
+import org.testcontainers.redpanda.RedpandaContainer;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
+import static org.citrusframework.actions.SendMessageAction.Builder.send;
+import static org.citrusframework.actions.SleepAction.Builder.delay;
+import static org.citrusframework.container.RepeatOnErrorUntilTrue.Builder.repeatOnError;
 import static org.citrusframework.http.actions.HttpActionBuilder.http;
 
 @QuarkusTest
 @CitrusSupport
+@RedpandaContainerSupport(containerLifecycleListener = AwsS3SinkTest.KafkaContainerLifecycleListener.class)
 @LocalStackContainerSupport(services = LocalStackContainer.Service.S3, containerLifecycleListener = AwsS3SinkTest.class)
 public class AwsS3SinkTest implements ContainerLifecycleListener<LocalStackContainer> {
 
@@ -58,17 +68,26 @@ public class AwsS3SinkTest implements ContainerLifecycleListener<LocalStackConta
     private LocalStackContainer localStackContainer;
 
     @BindToRegistry
-    public HttpClient knativeTrigger = HttpEndpoints.http()
-                .client()
-                .requestUrl("http://localhost:8081")
-                .build();
+    public KafkaEndpoint kafkaTopic = KafkaEndpoints.kafka()
+            .asynchronous()
+            .topic("my-topic")
+            .timeout(5000L)
+            .build();
+
+    @CitrusResource
+    private RedpandaContainer kafkaContainer;
+
+    @BeforeEach
+    public void setup() {
+        kafkaTopic.getEndpointConfiguration().setServer(kafkaContainer.getBootstrapServers());
+    }
 
     @Test
     public void shouldConsumeEvents() {
+        tc.given(delay().milliseconds(5000));
+
         tc.given(
-            http().client(knativeTrigger)
-                    .send()
-                    .post("/")
+            send(kafkaTopic)
                     .message()
                     .body(s3Data)
                     .header("ce-id", "citrus:randomPattern([0-9A-Z]{15}-[0-9]{16})")
@@ -77,13 +96,10 @@ public class AwsS3SinkTest implements ContainerLifecycleListener<LocalStackConta
                     .header("ce-subject", "aws-s3-source")
         );
 
-        tc.when(
-            http().client(knativeTrigger)
-                    .receive()
-                    .response(HttpStatus.NO_CONTENT)
-        );
-
-        tc.then(this::verifyS3File);
+        tc.then(repeatOnError()
+                .condition((i, context) -> i < 5)
+                        .autoSleep(Duration.ofMillis(2000))
+                .actions(this::verifyS3File));
     }
 
     private void verifyS3File(TestContext context) {
@@ -116,5 +132,15 @@ public class AwsS3SinkTest implements ContainerLifecycleListener<LocalStackConta
         conf.put("camel.kamelet.aws-s3-sink.keyName", "message.txt");
 
         return conf;
+    }
+
+    public static class KafkaContainerLifecycleListener implements ContainerLifecycleListener<RedpandaContainer> {
+        @Override
+        public Map<String, String> started(RedpandaContainer container) {
+            Map<String, String> conf = new HashMap<>();
+            conf.put("kafka.bootstrapServers", String.valueOf(container.getBootstrapServers()));
+            conf.put("kafka.topic", "my-topic");
+            return conf;
+        }
     }
 }

@@ -22,11 +22,11 @@ metadata:
 spec:
   source:
     ref:
-      kind: Broker
-      apiVersion: eventing.knative.dev/v1
-      name: default
+      apiVersion: kafka.strimzi.io/v1beta2
+      kind: KafkaTopic
+      name: "{{kafka.topic}}"
     properties:
-      type: ""
+      brokers: "{{kafka.bootstrapServers}}"
   sink:
     ref:
       kind: Kamelet

@@ -30,6 +30,8 @@ spec:
       in:
         format: http-application-cloudevents
     ref:
-      apiVersion: eventing.knative.dev/v1
-      kind: Broker
-      name: default
+      apiVersion: kafka.strimzi.io/v1beta2
+      kind: KafkaTopic
+      name: "{{kafka.topic}}"
+    properties:
+      brokers: "{{kafka.bootstrapServers}}"

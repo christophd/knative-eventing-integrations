@@ -24,25 +24,28 @@ import io.quarkus.test.junit.QuarkusTest;
 import org.citrusframework.TestCaseRunner;
 import org.citrusframework.annotations.CitrusResource;
 import org.citrusframework.context.TestContext;
-import org.citrusframework.http.endpoint.builder.HttpEndpoints;
-import org.citrusframework.http.server.HttpServer;
+import org.citrusframework.kafka.endpoint.KafkaEndpoint;
+import org.citrusframework.kafka.endpoint.builder.KafkaEndpoints;
 import org.citrusframework.quarkus.CitrusSupport;
 import org.citrusframework.spi.BindToRegistry;
 import org.citrusframework.testcontainers.aws2.LocalStackContainer;
 import org.citrusframework.testcontainers.aws2.quarkus.LocalStackContainerSupport;
 import org.citrusframework.testcontainers.quarkus.ContainerLifecycleListener;
+import org.citrusframework.testcontainers.redpanda.quarkus.RedpandaContainerSupport;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpStatus;
+import org.testcontainers.redpanda.RedpandaContainer;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.CompletedMultipartUpload;
 import software.amazon.awssdk.services.s3.model.CompletedPart;
 import software.amazon.awssdk.services.s3.model.CreateMultipartUploadResponse;
 
-import static org.citrusframework.http.actions.HttpActionBuilder.http;
+import static org.citrusframework.actions.ReceiveMessageAction.Builder.receive;
 
 @QuarkusTest
 @CitrusSupport
+@RedpandaContainerSupport(containerLifecycleListener = AwsS3SourceTest.KafkaContainerLifecycleListener.class)
 @LocalStackContainerSupport(services = LocalStackContainer.Service.S3, containerLifecycleListener = AwsS3SourceTest.class)
 public class AwsS3SourceTest implements ContainerLifecycleListener<LocalStackContainer> {
 
@@ -57,33 +60,31 @@ public class AwsS3SourceTest implements ContainerLifecycleListener<LocalStackCon
     private LocalStackContainer localStackContainer;
 
     @BindToRegistry
-    public HttpServer knativeBroker = HttpEndpoints.http()
-            .server()
-            .port(8080)
+    public KafkaEndpoint kafkaTopic = KafkaEndpoints.kafka()
+            .asynchronous()
+            .topic("my-topic")
             .timeout(5000L)
-            .autoStart(true)
             .build();
+
+    @CitrusResource
+    private RedpandaContainer kafkaContainer;
+
+    @BeforeEach
+    public void setup() {
+        kafkaTopic.getEndpointConfiguration().setServer(kafkaContainer.getBootstrapServers());
+    }
 
     @Test
     public void shouldProduceEvents() {
         tc.given(this::uploadS3File);
 
         tc.when(
-            http().server(knativeBroker)
-                    .receive()
-                    .post()
+            receive(kafkaTopic)
                     .message()
                     .body(s3Data)
                     .header("ce-id", "@matches([0-9A-Z]{15}-[0-9]{16})@")
-                    .header("ce-type", "dev.knative.eventing.aws-s3")
-                    .header("ce-source", "dev.knative.eventing.aws-s3-source")
-                    .header("ce-subject", "aws-s3-source")
-        );
-
-        tc.then(
-            http().server(knativeBroker)
-                    .send()
-                    .response(HttpStatus.OK)
+                    .header("ce-type", "org.apache.camel.event")
+                    .header("ce-source", "org.apache.camel")
         );
     }
 
@@ -121,5 +122,15 @@ public class AwsS3SourceTest implements ContainerLifecycleListener<LocalStackCon
         conf.put("camel.kamelet.aws-s3-source.forcePathStyle", "true");
 
         return conf;
+    }
+
+    public static class KafkaContainerLifecycleListener implements ContainerLifecycleListener<RedpandaContainer> {
+        @Override
+        public Map<String, String> started(RedpandaContainer container) {
+            Map<String, String> conf = new HashMap<>();
+            conf.put("kafka.bootstrapServers", String.valueOf(container.getBootstrapServers()));
+            conf.put("kafka.topic", "my-topic");
+            return conf;
+        }
     }
 }
